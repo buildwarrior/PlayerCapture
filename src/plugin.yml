@@ -1,0 +1,11 @@
+name: PlayerCapture
+version: '1.2'
+description: player capture allows you to record yourself and play back your actions in a NPC form.
+authors: [BuildWarrior]
+main: net.buildwarrior.playercapture.PlayerCapture
+api-version: '1.13'
+
+commands:
+  playercapture:
+    description: Main player capture command.
+    aliases: "pc"
