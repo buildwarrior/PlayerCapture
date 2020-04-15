@@ -5,6 +5,7 @@ import net.buildwarrior.playercapture.commands.CaptureCommand;
 import net.buildwarrior.playercapture.listeners.AnimationListener;
 import net.buildwarrior.playercapture.listeners.PlayerJoinLister;
 import net.buildwarrior.playercapture.listeners.PlayerQuitListener;
+import net.buildwarrior.playercapture.listeners.SleepListener;
 import net.buildwarrior.playercapture.listeners.SlotListener;
 import net.buildwarrior.playercapture.npc.NPC;
 import net.buildwarrior.playercapture.npc.NPCModule;
@@ -32,15 +33,15 @@ public class PlayerCapture extends JavaPlugin {
 	@Getter private HashMap<String, PlayTask> running = new HashMap<>();
 
 	//TODO: Support 2nd lay skin option
-	//TODO: Support flying, swimming and sleeping
+	//TODO: Support flying
 	//TODO: Support opening chests
 	//TODO: Support shooting projectile
-	//TODO: add more permissions
+	//TODO: Option for cape
 
+	//hitting glich
 	//cash skins to fix recording command
-	//option for no name tag
 	//tab support
-	//note folder being made outside of datafolder
+	//note folder being made outside of datafolder ??
 
 	public void onEnable() {
 		instance = this;
@@ -63,6 +64,7 @@ public class PlayerCapture extends JavaPlugin {
 		this.getServer().getPluginManager().registerEvents(new SlotListener(), this);
 		this.getServer().getPluginManager().registerEvents(new PlayerQuitListener(), this);
 		this.getServer().getPluginManager().registerEvents(new PlayerJoinLister(), this);
+		this.getServer().getPluginManager().registerEvents(new SleepListener(), this);
 
 		this.getCommand("playercapture").setExecutor(new CaptureCommand());
 
@@ -93,12 +95,12 @@ public class PlayerCapture extends JavaPlugin {
 		for(String frame : config.getData().getStringList("Frame")) {
 
 			String[] splitFrame = frame.split("/");
-			String[] mainHand = splitFrame[6].split(":");
-			String[] offHand = splitFrame[7].split(":");
-			String[] helmet = splitFrame[8].split(":");
-			String[] chestplate = splitFrame[9].split(":");
-			String[] leggings = splitFrame[10].split(":");
-			String[] boots = splitFrame[11].split(":");
+			String[] mainHand = splitFrame[9].split(":");
+			String[] offHand = splitFrame[10].split(":");
+			String[] helmet = splitFrame[11].split(":");
+			String[] chestplate = splitFrame[12].split(":");
+			String[] leggings = splitFrame[13].split(":");
+			String[] boots = splitFrame[14].split(":");
 
 			frames.add(new Frame(new Location(world,
 					Double.parseDouble(splitFrame[0].replace("X:", "")),
@@ -108,14 +110,17 @@ public class PlayerCapture extends JavaPlugin {
 					Float.parseFloat(splitFrame[3].replace("Pitch:", ""))),
 
 					Boolean.parseBoolean(splitFrame[5].replace("Sneak:", "")),
-					Boolean.parseBoolean(splitFrame[12].replace("Hit:", "")),
+					Boolean.parseBoolean(splitFrame[6].replace("Sleep:", "")),
+					Boolean.parseBoolean(splitFrame[7].replace("Fly:", "")),
+					Boolean.parseBoolean(splitFrame[8].replace("Swim:", "")),
+					Boolean.parseBoolean(splitFrame[15].replace("Hit:", "")),
 
-					new ItemBuilder().type(Material.valueOf(mainHand[1])).damage(Integer.parseInt(mainHand[2])).build(),
-					new ItemBuilder().type(Material.valueOf(offHand[1])).damage(Integer.parseInt(offHand[2])).build(),
-					new ItemBuilder().type(Material.valueOf(helmet[1])).damage(Integer.parseInt(helmet[2])).build(),
-					new ItemBuilder().type(Material.valueOf(chestplate[1])).damage(Integer.parseInt(chestplate[2])).build(),
-					new ItemBuilder().type(Material.valueOf(leggings[1])).damage(Integer.parseInt(leggings[2])).build(),
-					new ItemBuilder().type(Material.valueOf(boots[1])).damage(Integer.parseInt(boots[2])).build()));
+					new ItemBuilder().type(Material.valueOf(helmet[1])).damage(Integer.parseInt(mainHand[2])).build(),
+					new ItemBuilder().type(Material.valueOf(chestplate[1])).damage(Integer.parseInt(offHand[2])).build(),
+					new ItemBuilder().type(Material.valueOf(leggings[1])).damage(Integer.parseInt(helmet[2])).build(),
+					new ItemBuilder().type(Material.valueOf(boots[1])).damage(Integer.parseInt(chestplate[2])).build(),
+					new ItemBuilder().type(Material.valueOf(mainHand[1])).damage(Integer.parseInt(leggings[2])).build(),
+					new ItemBuilder().type(Material.valueOf(offHand[1])).damage(Integer.parseInt(boots[2])).build()));
 		}
 		npc.setFrames(frames);
 		npc.setStart(frames.get(0).getLocation());
@@ -126,7 +131,7 @@ public class PlayerCapture extends JavaPlugin {
 
 		if(npc.isLoop()) {
 
-			PlayTask playTask = new PlayTask(NPCModule.getInstance().getNPC(name), NPCModule.getInstance().getNPC(name).clone());
+			PlayTask playTask = new PlayTask(NPCModule.getInstance().getNPC(name), NPCModule.getInstance().getNPC(name).clone(0));
 
 			playTask.runTaskTimer(PlayerCapture.getInstance(), 0, 2);
 

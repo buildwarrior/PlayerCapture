@@ -1,11 +1,13 @@
 package net.buildwarrior.playercapture.tasks;
 
 import lombok.Getter;
+import net.buildwarrior.playercapture.listeners.SleepListener;
 import net.buildwarrior.playercapture.npc.NPC;
 import net.buildwarrior.playercapture.npc.NPCModule;
 import net.buildwarrior.playercapture.utils.Frame;
 import net.buildwarrior.playercapture.listeners.AnimationListener;
 import net.buildwarrior.playercapture.utils.ItemBuilder;
+import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -48,7 +50,17 @@ public class RecordTask extends BukkitRunnable {
 		if(npc.getRecordingPlayer().getEquipment().getLeggings() != null) leggings = new ItemBuilder(npc.getRecordingPlayer().getEquipment().getLeggings(), null).build();
 		if(npc.getRecordingPlayer().getEquipment().getBoots() != null) boots = new ItemBuilder(npc.getRecordingPlayer().getEquipment().getBoots(), null).build();
 
-		npc.getFrames().add(new Frame(npc.getRecordingPlayer().getLocation(), npc.getRecordingPlayer().isSneaking(), hit,
+		Location location = npc.getRecordingPlayer().getLocation();
+		if(npc.getRecordingPlayer().isSleeping()) {
+			location = SleepListener.players.get(npc.getRecordingPlayer());
+		}
+
+		npc.getFrames().add(new Frame(location,
+				npc.getRecordingPlayer().isSneaking(),
+				npc.getRecordingPlayer().isSleeping(),
+				false,//TODO
+				npc.getRecordingPlayer().isSwimming(),
+				hit,
 				helmet, chestplate, leggings, boots, mainHand, offHand));
 	}
 }

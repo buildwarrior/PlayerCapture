@@ -66,7 +66,9 @@ class CommandBase {
 
 	void record(String name, String displayName, OfflinePlayer skin, Player player) {
 		NPCModule.getInstance().addNPC(name, player, skin);
+
 		NPCModule.getInstance().getNPC(name).setDisplayName(displayName);
+
 		NPCModule.getInstance().getNPC(name).setUp(true);
 
 		RecordTask recordTask = new RecordTask(NPCModule.getInstance().getNPC(name));

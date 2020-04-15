@@ -27,6 +27,11 @@ public class CaptureCommand extends CommandBase implements CommandExecutor {
 	}
 
 	private void execute(CommandSender sender, String[] args) {
+		if(!sender.hasPermission(PermissionLang.USE)) {
+			sender.sendMessage(ChatColor.RED + "You need the permission 'playercapture.command.use' to do this command!");
+			return;
+		}
+
 		Player player = null;
 
 		if (sender instanceof Player) {
@@ -113,7 +118,7 @@ public class CaptureCommand extends CommandBase implements CommandExecutor {
 					return;
 				}
 
-				PlayTask playTask = new PlayTask(NPCModule.getInstance().getNPC(args[1]), NPCModule.getInstance().getNPC(args[1]).clone());
+				PlayTask playTask = new PlayTask(NPCModule.getInstance().getNPC(args[1]), NPCModule.getInstance().getNPC(args[1]).clone(0));
 
 				playTask.runTaskTimer(PlayerCapture.getInstance(), 0, 2);
 
@@ -147,6 +152,11 @@ public class CaptureCommand extends CommandBase implements CommandExecutor {
 			}
 
 			if (args[0].equalsIgnoreCase("remove") && args.length > 2) {
+				if(!sender.hasPermission(PermissionLang.REMOVE)) {
+					sender.sendMessage(ChatColor.RED + "You need the permission 'playercapture.command.remove' to do this command!");
+					return;
+				}
+
 				if(!NPCModule.getInstance().isNPC(args[1])) {
 					sender.sendMessage(ChatColor.RED + "NPC not found!");
 					return;
@@ -158,9 +168,10 @@ public class CaptureCommand extends CommandBase implements CommandExecutor {
 				for(PlayTask playTask : PlayerCapture.getInstance().getRunning().values()) {
 					if(playTask.getNpc().equals(npc)) {
 						playTask.cancel();
-						PlayerCapture.getInstance().getRunning().remove(args[1]);
+						playTask.getClone().remove();
 					}
 				}
+				PlayerCapture.getInstance().getRunning().remove(args[1]);
 
 				NPCModule.getInstance().removeNPC(npc.getName());
 
@@ -215,6 +226,7 @@ public class CaptureCommand extends CommandBase implements CommandExecutor {
 				}
 
 				NPCModule.getInstance().getNPC(args[1]).setDisplayName(args[2]);
+
 				NPCModule.getInstance().getNPC(args[1]).save();
 
 				sender.sendMessage(ChatColor.GREEN + "Name set!");

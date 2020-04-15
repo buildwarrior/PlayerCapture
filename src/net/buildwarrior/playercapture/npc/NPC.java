@@ -39,6 +39,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitRunnable;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -50,7 +51,7 @@ public class NPC {
 
 	@Getter @Setter private String displayName;
 	@Getter private World world;
-	@Setter	private OfflinePlayer skinID;
+	@Getter @Setter	private OfflinePlayer skinID;
 	@Getter @Setter private boolean loop;
 
 	@Setter @Getter private List<Frame> frames = new ArrayList<>();
@@ -80,12 +81,12 @@ public class NPC {
 		this.signature = signature;
 	}
 
-	public NPC clone() {
+	public NPC clone(int frame) {
 		NPC npc = new NPC(name, world, skinID, value, signature);
 		npc.setDisplayName(this.displayName);
 		npc.setLoop(this.loop);
 		npc.setFrames(this.frames);
-		npc.setStart(frames.get(0).getLocation());
+		npc.setStart(frames.get(frame).getLocation());
 		npc.setUp(false);
 		return npc;
 	}
@@ -104,6 +105,18 @@ public class NPC {
 		WorldServer worldServer = ((CraftWorld) this.world).getHandle();
 
 		GameProfile profile = new GameProfile(UUID.randomUUID(), ChatColor.translateAlternateColorCodes('&', displayName));
+
+		if(displayName.equalsIgnoreCase("-")) {
+			try {
+				Field f = profile.getClass().getDeclaredField("name");
+				f.setAccessible(true);
+				f.set(profile, "");
+
+			} catch(NoSuchFieldException | IllegalAccessException e) {
+				e.printStackTrace();
+			}
+		}
+
 		profile.getProperties().put("textures", new Property("textures", value, signature));
 
 		this.entityPlayer = new EntityPlayer(server, worldServer, profile, new PlayerInteractManager(worldServer));
@@ -133,6 +146,9 @@ public class NPC {
 					"/Pitch:" + frame.getLocation().getPitch() +
 					"/Yaw:" + frame.getLocation().getYaw() +
 					"/Sneak:" + frame.isSneaking() +
+					"/Sleep:" + frame.isSleeping() +
+					"/Fly:" + "false" +
+					"/Swim:" + frame.isSwimming() +
 					"/MainHand:" + frame.getMainHand().getType() + ":" + frame.getMainHand().getDurability() +
 					"/OffHand:" + frame.getOffHand().getType() + ":" + frame.getOffHand().getDurability() +
 					"/Helmet:" + frame.getHelmet().getType() + ":" + frame.getHelmet().getDurability() +
