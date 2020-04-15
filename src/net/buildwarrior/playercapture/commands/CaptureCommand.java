@@ -4,6 +4,7 @@ import net.buildwarrior.playercapture.PlayerCapture;
 import net.buildwarrior.playercapture.npc.NPC;
 import net.buildwarrior.playercapture.npc.NPCModule;
 import net.buildwarrior.playercapture.tasks.PlayTask;
+import net.buildwarrior.playercapture.tasks.RecordTask;
 import net.buildwarrior.playercapture.utils.PermissionLang;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -34,6 +35,26 @@ public class CaptureCommand extends CommandBase implements CommandExecutor {
 		if (args.length > 0) {
 
 			if(args[0].equalsIgnoreCase("reload")) {
+
+				for(RecordTask recordTask : PlayerCapture.getInstance().getCurrentlyRecording().values()) {
+					recordTask.cancel();
+					PlayerCapture.getInstance().getCurrentlyRecording().remove(recordTask.getNpc().getRecordingPlayer());
+				}
+
+				for(PlayTask playTask : PlayerCapture.getInstance().getRunning().values()) {
+					playTask.cancel();
+					playTask.getClone().remove();
+					PlayerCapture.getInstance().getRunning().remove(playTask.getNpc().getName());
+				}
+
+				NPCModule.getInstance().clear();
+
+				File recordings = new File(PlayerCapture.getInstance().getDataFolder() + "\\Recordings");
+				for(File name : recordings.listFiles()) {
+					PlayerCapture.getInstance().loadNPC(name.getName().replace(".yml", ""));
+				}
+
+				sender.sendMessage(ChatColor.GREEN + "Plugin reloaded!");
 				return;
 			}
 

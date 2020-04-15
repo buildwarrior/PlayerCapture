@@ -37,6 +37,10 @@ public class NPCModule {
 		return new ArrayList<>(this.npcs.values());
 	}
 
+	public void clear() {
+		this.npcs.clear();
+	}
+
 	public static NPCModule getInstance() {
 		if (instance == null) {
 			instance = new NPCModule();

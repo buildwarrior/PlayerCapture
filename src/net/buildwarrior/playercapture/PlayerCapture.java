@@ -37,9 +37,7 @@ public class PlayerCapture extends JavaPlugin {
 	//TODO: Support shooting projectile
 	//TODO: add more permissions
 
-	//old files get loaded back up after removing
-
-	//reload command
+	//cash skins to fix recording command
 	//option for no name tag
 	//tab support
 	//note folder being made outside of datafolder
@@ -72,6 +70,10 @@ public class PlayerCapture extends JavaPlugin {
 	}
 
 	public void onDisable() {
+		for(PlayTask playTask : running.values()) {
+			playTask.getClone().remove();
+		}
+
 		System.out.println("\033[0;33m[MovementCapture] \033[0;31mMovementCapture is disabled!\033[0m");
 	}
 
@@ -116,6 +118,8 @@ public class PlayerCapture extends JavaPlugin {
 					new ItemBuilder().type(Material.valueOf(boots[1])).damage(Integer.parseInt(boots[2])).build()));
 		}
 		npc.setFrames(frames);
+		npc.setStart(frames.get(0).getLocation());
+
 		npc.setUp(false);
 
 		NPCModule.getInstance().addNPC(name, npc);

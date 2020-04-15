@@ -60,11 +60,15 @@ public class NPC {
 	private String value = null;
 	private String signature = null;
 
-	public NPC(String name, Player recordingPlayer, OfflinePlayer skin) {
+	@Setter private Location start;
+
+	NPC(String name, Player recordingPlayer, OfflinePlayer skin) {
 		this.name = name;
 		this.recordingPlayer = recordingPlayer;
 		this.world = recordingPlayer.getWorld();
 		this.skinID = skin;
+
+		this.start = recordingPlayer.getLocation();
 	}
 
 	public NPC(String name, World world, OfflinePlayer skin, String value, String signature) {
@@ -81,12 +85,14 @@ public class NPC {
 		npc.setDisplayName(this.displayName);
 		npc.setLoop(this.loop);
 		npc.setFrames(this.frames);
+		npc.setStart(frames.get(0).getLocation());
 		npc.setUp(false);
 		return npc;
 	}
 
 	public void setUp(boolean update) {
 		if(update) {
+
 			String urlContents = URLContents.getUrlContents("https://sessionserver.mojang.com/session/minecraft/profile/" +
 					skinID.getUniqueId().toString().replaceAll("-", "") + "?unsigned=false");
 
@@ -102,7 +108,7 @@ public class NPC {
 
 		this.entityPlayer = new EntityPlayer(server, worldServer, profile, new PlayerInteractManager(worldServer));
 
-		this.entityPlayer.setLocation(frames.get(0).getLocation().getX(), frames.get(0).getLocation().getY(), frames.get(0).getLocation().getZ(), 0, 0);
+		this.entityPlayer.setLocation(start.getX(), start.getY(), start.getZ(), 0, 0);
 
 		Byte b = 0x01 | 0x02 | 0x04 | 0x08 | 0x10 | 0x20 | 0x40;
 		this.entityPlayer.getDataWatcher().set(DataWatcherRegistry.a.a(15), b);
