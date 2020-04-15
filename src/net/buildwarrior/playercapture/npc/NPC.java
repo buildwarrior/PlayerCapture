@@ -109,7 +109,7 @@ public class NPC {
 	}
 
 	public void save() {
-		Config config = new Config(PlayerCapture.getInstance().getDataFolder() + "\\recordings/" + name + ".yml");
+		Config config = new Config(PlayerCapture.getInstance().getDataFolder() + "\\Recordings/" + name + ".yml");
 		List<String> list = new ArrayList<>();
 
 		config.getData().set("DisplayName", this.displayName);

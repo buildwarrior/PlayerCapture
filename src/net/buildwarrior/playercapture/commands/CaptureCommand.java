@@ -13,12 +13,19 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 
 public class CaptureCommand extends CommandBase implements CommandExecutor {
 
 	@Override
 	public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+		execute(sender, args);
+		return true;
+	}
 
+	private void execute(CommandSender sender, String[] args) {
 		Player player = null;
 
 		if (sender instanceof Player) {
@@ -26,16 +33,20 @@ public class CaptureCommand extends CommandBase implements CommandExecutor {
 		}
 		if (args.length > 0) {
 
+			if(args[0].equalsIgnoreCase("reload")) {
+				return;
+			}
+
 			if (args[0].equalsIgnoreCase("record") && args.length > 1) {
 
 				if(!sender.hasPermission(PermissionLang.RECORD)) {
 					sender.sendMessage(ChatColor.RED + "You need the permission 'playercapture.command.record' to do this command!");
-					return true;
+					return;
 				}
 
 				if(NPCModule.getInstance().isNPC(args[1])) {
 					sender.sendMessage(ChatColor.RED + "NPC already exists with that name!");
-					return true;
+					return;
 				}
 
 				if(args.length == 5) {
@@ -43,42 +54,42 @@ public class CaptureCommand extends CommandBase implements CommandExecutor {
 
 					if(target == null) {
 						sender.sendMessage(ChatColor.RED + "Unknown player!");
-						return true;
+						return;
 					}
 
 					record(args[1], args[2], Bukkit.getOfflinePlayer(args[3]), target);
-					return true;
+					return;
 				}
 
 				if(player == null) {
 					sender.sendMessage(ChatColor.RED + "Only players can do this command!");
-					return true;
+					return;
 				}
 
 				if(PlayerCapture.getInstance().getCurrentlyRecording().containsKey(player)) {
 					player.sendMessage(ChatColor.RED + "You cannot do this command while recording!");
-					return true;
+					return;
 				}
 
 				if(args.length == 2) {
 					record(args[1], player.getDisplayName(), player, player);
-					return true;
+					return;
 				}
 				if(args.length == 3) {
 					record(args[1], args[2], player, player);
-					return true;
+					return;
 				}
 				if(args.length == 4) {
 					record(args[1], args[2], Bukkit.getOfflinePlayer(args[3]), player);
-					return true;
+					return;
 				}
-				return true;
+				return;
 			}
 
 			if (args[0].equalsIgnoreCase("play") && args.length > 1) {
 				if(!NPCModule.getInstance().isNPC(args[1])) {
 					sender.sendMessage(ChatColor.RED + "NPC not found!");
-					return true;
+					return;
 				}
 
 				PlayTask playTask = new PlayTask(NPCModule.getInstance().getNPC(args[1]), NPCModule.getInstance().getNPC(args[1]).clone());
@@ -87,13 +98,13 @@ public class CaptureCommand extends CommandBase implements CommandExecutor {
 
 				PlayerCapture.getInstance().getRunning().put(args[1], playTask);
 				sender.sendMessage(ChatColor.GREEN + "NPC started!");
-				return true;
+				return;
 			}
 
 			if (args[0].equalsIgnoreCase("stop") && args.length > 1) {
 				if(!NPCModule.getInstance().isNPC(args[1])) {
 					sender.sendMessage(ChatColor.RED + "NPC not found!");
-					return true;
+					return;
 				}
 
 				if(PlayerCapture.getInstance().getRunning().containsKey(args[1])) {
@@ -106,18 +117,18 @@ public class CaptureCommand extends CommandBase implements CommandExecutor {
 				} else {
 					sender.sendMessage(ChatColor.RED + "NPC not playing!");
 				}
-				return true;
+				return;
 			}
 
 			if (args[0].equalsIgnoreCase("list")) {
 				list(player, sender);
-				return true;
+				return;
 			}
 
 			if (args[0].equalsIgnoreCase("remove") && args.length > 2) {
 				if(!NPCModule.getInstance().isNPC(args[1])) {
 					sender.sendMessage(ChatColor.RED + "NPC not found!");
-					return true;
+					return;
 				}
 
 				NPC npc = NPCModule.getInstance().getNPC(args[1]);
@@ -133,30 +144,39 @@ public class CaptureCommand extends CommandBase implements CommandExecutor {
 				NPCModule.getInstance().removeNPC(npc.getName());
 
 				if(Boolean.parseBoolean(args[2])) {
-					new File(PlayerCapture.getInstance().getDataFolder() + "\\recordings/" + args[1] + ".yml").delete();
+					new File(PlayerCapture.getInstance().getDataFolder() + "\\Recordings/" + args[1] + ".yml").delete();
 
 					sender.sendMessage(ChatColor.GREEN + "Animation removed! (Config was removed)");
-					return true;
+					return;
 				}
 
-				sender.sendMessage(ChatColor.GREEN + "Animation removed! (Config was not removed)");
-				return true;
+				try {
+					Files.move(
+							Paths.get(PlayerCapture.getInstance().getDataFolder() + "\\Recordings/" + args[1] + ".yml"),
+							Paths.get(PlayerCapture.getInstance().getDataFolder() + "\\Archive/" + args[1] + ".yml"));
+
+				} catch(IOException e) {
+					e.printStackTrace();
+				}
+
+				sender.sendMessage(ChatColor.GREEN + "Animation removed! (Config was moved to archive)");
+				return;
 			}
 
 			if (args[0].equalsIgnoreCase("info") && args.length > 1) {
 				if(!NPCModule.getInstance().isNPC(args[1])) {
 					sender.sendMessage(ChatColor.RED + "NPC not found!");
-					return true;
+					return;
 				}
 
 				sender.sendMessage(info(NPCModule.getInstance().getNPC(args[1])));
-				return true;
+				return;
 			}
 
 			if (args[0].equalsIgnoreCase("setskin") && args.length > 1) {
 				if(!NPCModule.getInstance().isNPC(args[1])) {
 					sender.sendMessage(ChatColor.RED + "NPC not found!");
-					return true;
+					return;
 				}
 
 				NPCModule.getInstance().getNPC(args[1]).setSkinID(Bukkit.getOfflinePlayer(args[2]));
@@ -164,54 +184,61 @@ public class CaptureCommand extends CommandBase implements CommandExecutor {
 				NPCModule.getInstance().getNPC(args[1]).setUp(true);
 
 				sender.sendMessage(ChatColor.GREEN + "Skin set!");
-				return true;
+				return;
 			}
 
 			if (args[0].equalsIgnoreCase("setdisplayname") && args.length > 1) {
 				if(!NPCModule.getInstance().isNPC(args[1])) {
 					sender.sendMessage(ChatColor.RED + "NPC not found!");
-					return true;
+					return;
 				}
 
 				NPCModule.getInstance().getNPC(args[1]).setDisplayName(args[2]);
 				NPCModule.getInstance().getNPC(args[1]).save();
 
 				sender.sendMessage(ChatColor.GREEN + "Name set!");
-				return true;
+				return;
 			}
 
 			if (args[0].equalsIgnoreCase("setloop") && args.length > 2) {
 				if(!NPCModule.getInstance().isNPC(args[1])) {
 					sender.sendMessage(ChatColor.RED + "NPC not found!");
-					return true;
+					return;
 				}
 
 				NPCModule.getInstance().getNPC(args[1]).setLoop(Boolean.parseBoolean(args[2]));
 				NPCModule.getInstance().getNPC(args[1]).save();
 
 				sender.sendMessage(ChatColor.GREEN + "Looping set to " + Boolean.parseBoolean(args[2]) + "!");
-				return true;
+				return;
 			}
 
 			if (args[0].equalsIgnoreCase("import") && args.length > 1) {
 				if(NPCModule.getInstance().isNPC(args[1])) {
 					sender.sendMessage(ChatColor.RED + "NPC already exists with that name!");
-					return true;
+					return;
 				}
 
-				if(!new File(PlayerCapture.getInstance().getDataFolder() + "\\recordings/" + args[1] + ".yml").exists()) {
+				if(!new File(PlayerCapture.getInstance().getDataFolder() + "\\Archive/" + args[1] + ".yml").exists()) {
 					sender.sendMessage(ChatColor.RED + "File was not found!");
-					return true;
+					return;
+				}
+
+				try {
+					Files.move(
+							Paths.get(PlayerCapture.getInstance().getDataFolder() + "\\Archive/" + args[1] + ".yml"),
+							Paths.get(PlayerCapture.getInstance().getDataFolder() + "\\Recordings/" + args[1] + ".yml"));
+
+				} catch(IOException e) {
+					e.printStackTrace();
 				}
 
 				PlayerCapture.getInstance().loadNPC(args[1]);
-				sender.sendMessage(ChatColor.GREEN + "NPC imported!");
-				return true;
+				sender.sendMessage(ChatColor.GREEN + "NPC config imported!");
+				return;
 			}
 		}
 
 		sender.sendMessage(helpMessage());
-
-		return true;
 	}
 }

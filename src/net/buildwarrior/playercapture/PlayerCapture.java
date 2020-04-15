@@ -38,8 +38,8 @@ public class PlayerCapture extends JavaPlugin {
 	//TODO: add more permissions
 
 	//old files get loaded back up after removing
+
 	//reload command
-	//add to github
 	//option for no name tag
 	//tab support
 	//note folder being made outside of datafolder
@@ -47,9 +47,14 @@ public class PlayerCapture extends JavaPlugin {
 	public void onEnable() {
 		instance = this;
 
-		File recordings = new File(getDataFolder() + "\\recordings");
+		File recordings = new File(getDataFolder() + "\\Recordings");
 		if(!recordings.exists()) {
 			recordings.mkdir();
+		}
+
+		File archive = new File(getDataFolder() + "\\Archive");
+		if(!archive.exists()) {
+			archive.mkdir();
 		}
 
 		for(File name : recordings.listFiles()) {
@@ -72,7 +77,7 @@ public class PlayerCapture extends JavaPlugin {
 
 	public void loadNPC(String name) {
 
-		Config config = new Config(PlayerCapture.getInstance().getDataFolder() + "\\recordings/" + name + ".yml");
+		Config config = new Config(PlayerCapture.getInstance().getDataFolder() + "\\Recordings/" + name + ".yml");
 
 		World world = Bukkit.getWorld(config.getData().getString("World"));
 
