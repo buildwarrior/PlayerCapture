@@ -58,7 +58,7 @@ public class RecordTask extends BukkitRunnable {
 		npc.getFrames().add(new Frame(location,
 				npc.getRecordingPlayer().isSneaking(),
 				npc.getRecordingPlayer().isSleeping(),
-				false,//TODO
+				npc.getRecordingPlayer().isGliding(),
 				npc.getRecordingPlayer().isSwimming(),
 				hit,
 				helmet, chestplate, leggings, boots, mainHand, offHand));

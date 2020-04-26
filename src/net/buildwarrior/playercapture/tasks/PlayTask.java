@@ -38,7 +38,8 @@ public class PlayTask extends BukkitRunnable {
 	@Override
 	public void run() {
 
-		if(!clone.getDisplayName().equals(npc.getDisplayName()) || !clone.getSkinID().equals(npc.getSkinID())) {
+		if(!clone.getDisplayName().equals(npc.getDisplayName()) || !clone.getSkinCatch().equals(npc.getSkinCatch())) {
+
 			cancel();
 			clone.remove();
 			PlayerCapture.getInstance().getRunning().remove(npc.getName());
@@ -57,6 +58,9 @@ public class PlayTask extends BukkitRunnable {
 
 		} else if(npc.getFrames().get(frame).isSwimming()) {
 			clone.setEntityPos(EntityPose.SWIMMING);
+
+		} else if(npc.getFrames().get(frame).isFlying()) {
+			clone.setEntityPos(EntityPose.FALL_FLYING);
 
 		} else if(npc.getFrames().get(frame).isSleeping()) {
 			clone.setEntityPos(EntityPose.SLEEPING);

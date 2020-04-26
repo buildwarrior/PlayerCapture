@@ -1,6 +1,6 @@
 <component name="ArtifactManager">
   <artifact type="jar" name="PlayerCapture">
-    <output-path>$USER_HOME$/Desktop/Minecraft Stuff/2020/Testing Server/plugins</output-path>
+    <output-path>$USER_HOME$/Desktop/Minecraft Stuff/Testing Server/plugins</output-path>
     <root id="archive" name="PlayerCapture.jar">
       <element id="module-output" name="PlayerCapture" />
     </root>

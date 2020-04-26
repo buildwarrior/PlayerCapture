@@ -1,8 +1,10 @@
 package net.buildwarrior.playercapture.commands;
 
+import net.buildwarrior.playercapture.Lang;
 import net.buildwarrior.playercapture.PlayerCapture;
 import net.buildwarrior.playercapture.npc.NPC;
 import net.buildwarrior.playercapture.npc.NPCModule;
+import net.buildwarrior.playercapture.npc.SkinCatch;
 import net.buildwarrior.playercapture.tasks.PlayTask;
 import net.buildwarrior.playercapture.tasks.RecordTask;
 import net.buildwarrior.playercapture.utils.PermissionLang;
@@ -28,7 +30,7 @@ public class CaptureCommand extends CommandBase implements CommandExecutor {
 
 	private void execute(CommandSender sender, String[] args) {
 		if(!sender.hasPermission(PermissionLang.USE)) {
-			sender.sendMessage(ChatColor.RED + "You need the permission 'playercapture.command.use' to do this command!");
+			sender.sendMessage(Lang.NO_PERMISSION(PermissionLang.USE));
 			return;
 		}
 
@@ -59,19 +61,19 @@ public class CaptureCommand extends CommandBase implements CommandExecutor {
 					PlayerCapture.getInstance().loadNPC(name.getName().replace(".yml", ""));
 				}
 
-				sender.sendMessage(ChatColor.GREEN + "Plugin reloaded!");
+				sender.sendMessage(Lang.RELOAD);
 				return;
 			}
 
 			if (args[0].equalsIgnoreCase("record") && args.length > 1) {
 
 				if(!sender.hasPermission(PermissionLang.RECORD)) {
-					sender.sendMessage(ChatColor.RED + "You need the permission 'playercapture.command.record' to do this command!");
+					sender.sendMessage(Lang.NO_PERMISSION(PermissionLang.RECORD));
 					return;
 				}
 
 				if(NPCModule.getInstance().isNPC(args[1])) {
-					sender.sendMessage(ChatColor.RED + "NPC already exists with that name!");
+					sender.sendMessage(Lang.NPC_EXISTS);
 					return;
 				}
 
@@ -79,34 +81,34 @@ public class CaptureCommand extends CommandBase implements CommandExecutor {
 					Player target = Bukkit.getPlayer(args[4]);
 
 					if(target == null) {
-						sender.sendMessage(ChatColor.RED + "Unknown player!");
+						sender.sendMessage(Lang.UNKNOWN_PLAYER);
 						return;
 					}
 
-					record(args[1], args[2], Bukkit.getOfflinePlayer(args[3]), target);
+					record(args[1], args[2], PlayerCapture.getInstance().createSkin(Bukkit.getOfflinePlayer(args[3])), target);
 					return;
 				}
 
 				if(player == null) {
-					sender.sendMessage(ChatColor.RED + "Only players can do this command!");
+					sender.sendMessage(Lang.PLAYERS_ONLY);
 					return;
 				}
 
 				if(PlayerCapture.getInstance().getCurrentlyRecording().containsKey(player)) {
-					player.sendMessage(ChatColor.RED + "You cannot do this command while recording!");
+					player.sendMessage(Lang.ALREADY_RECORDING);
 					return;
 				}
 
 				if(args.length == 2) {
-					record(args[1], player.getDisplayName(), player, player);
+					record(args[1], player.getDisplayName(), PlayerCapture.getInstance().createSkin(player), player);
 					return;
 				}
 				if(args.length == 3) {
-					record(args[1], args[2], player, player);
+					record(args[1], args[2], PlayerCapture.getInstance().createSkin(player), player);
 					return;
 				}
 				if(args.length == 4) {
-					record(args[1], args[2], Bukkit.getOfflinePlayer(args[3]), player);
+					record(args[1], args[2], PlayerCapture.getInstance().createSkin(Bukkit.getOfflinePlayer(args[3])), player);
 					return;
 				}
 				return;
@@ -114,7 +116,12 @@ public class CaptureCommand extends CommandBase implements CommandExecutor {
 
 			if (args[0].equalsIgnoreCase("play") && args.length > 1) {
 				if(!NPCModule.getInstance().isNPC(args[1])) {
-					sender.sendMessage(ChatColor.RED + "NPC not found!");
+					sender.sendMessage(Lang.NPC_NOT_FOUND);
+					return;
+				}
+
+				if(PlayerCapture.getInstance().getRunning().containsKey(args[1])) {
+					sender.sendMessage(Lang.ALREADY_RUNNING);
 					return;
 				}
 
@@ -123,13 +130,13 @@ public class CaptureCommand extends CommandBase implements CommandExecutor {
 				playTask.runTaskTimer(PlayerCapture.getInstance(), 0, 2);
 
 				PlayerCapture.getInstance().getRunning().put(args[1], playTask);
-				sender.sendMessage(ChatColor.GREEN + "NPC started!");
+				sender.sendMessage(Lang.START);
 				return;
 			}
 
 			if (args[0].equalsIgnoreCase("stop") && args.length > 1) {
 				if(!NPCModule.getInstance().isNPC(args[1])) {
-					sender.sendMessage(ChatColor.RED + "NPC not found!");
+					sender.sendMessage(Lang.NPC_NOT_FOUND);
 					return;
 				}
 
@@ -138,10 +145,10 @@ public class CaptureCommand extends CommandBase implements CommandExecutor {
 					PlayerCapture.getInstance().getRunning().get(args[1]).getClone().remove();
 					PlayerCapture.getInstance().getRunning().remove(args[1]);
 
-					sender.sendMessage(ChatColor.GREEN + "NPC stopped!");
+					sender.sendMessage(Lang.END);
 
 				} else {
-					sender.sendMessage(ChatColor.RED + "NPC not playing!");
+					sender.sendMessage(Lang.NOT_PLAYING);
 				}
 				return;
 			}
@@ -153,12 +160,12 @@ public class CaptureCommand extends CommandBase implements CommandExecutor {
 
 			if (args[0].equalsIgnoreCase("remove") && args.length > 2) {
 				if(!sender.hasPermission(PermissionLang.REMOVE)) {
-					sender.sendMessage(ChatColor.RED + "You need the permission 'playercapture.command.remove' to do this command!");
+					sender.sendMessage(Lang.NO_PERMISSION(PermissionLang.REMOVE));
 					return;
 				}
 
 				if(!NPCModule.getInstance().isNPC(args[1])) {
-					sender.sendMessage(ChatColor.RED + "NPC not found!");
+					sender.sendMessage(Lang.NPC_NOT_FOUND);
 					return;
 				}
 
@@ -178,7 +185,7 @@ public class CaptureCommand extends CommandBase implements CommandExecutor {
 				if(Boolean.parseBoolean(args[2])) {
 					new File(PlayerCapture.getInstance().getDataFolder() + "\\Recordings/" + args[1] + ".yml").delete();
 
-					sender.sendMessage(ChatColor.GREEN + "Animation removed! (Config was removed)");
+					sender.sendMessage(Lang.CONFIG("Config was removed"));
 					return;
 				}
 
@@ -191,13 +198,13 @@ public class CaptureCommand extends CommandBase implements CommandExecutor {
 					e.printStackTrace();
 				}
 
-				sender.sendMessage(ChatColor.GREEN + "Animation removed! (Config was moved to archive)");
+				sender.sendMessage(Lang.CONFIG("Config was moved to archive"));
 				return;
 			}
 
 			if (args[0].equalsIgnoreCase("info") && args.length > 1) {
 				if(!NPCModule.getInstance().isNPC(args[1])) {
-					sender.sendMessage(ChatColor.RED + "NPC not found!");
+					sender.sendMessage(Lang.NPC_NOT_FOUND);
 					return;
 				}
 
@@ -207,13 +214,20 @@ public class CaptureCommand extends CommandBase implements CommandExecutor {
 
 			if (args[0].equalsIgnoreCase("setskin") && args.length > 1) {
 				if(!NPCModule.getInstance().isNPC(args[1])) {
-					sender.sendMessage(ChatColor.RED + "NPC not found!");
+					sender.sendMessage(Lang.NPC_NOT_FOUND);
 					return;
 				}
 
-				NPCModule.getInstance().getNPC(args[1]).setSkinID(Bukkit.getOfflinePlayer(args[2]));
+				SkinCatch skinCatch = PlayerCapture.getInstance().createSkin(Bukkit.getOfflinePlayer(args[2]));
+
+				if(skinCatch.getValue() == null) {
+					sender.sendMessage(Lang.PLAYER_NOT_FOUND);
+					return;
+				}
+
+				NPCModule.getInstance().getNPC(args[1]).setSkinCatch(skinCatch);
 				NPCModule.getInstance().getNPC(args[1]).save();
-				NPCModule.getInstance().getNPC(args[1]).setUp(true);
+				NPCModule.getInstance().getNPC(args[1]).setUp();
 
 				sender.sendMessage(ChatColor.GREEN + "Skin set!");
 				return;
@@ -221,7 +235,7 @@ public class CaptureCommand extends CommandBase implements CommandExecutor {
 
 			if (args[0].equalsIgnoreCase("setdisplayname") && args.length > 1) {
 				if(!NPCModule.getInstance().isNPC(args[1])) {
-					sender.sendMessage(ChatColor.RED + "NPC not found!");
+					sender.sendMessage(Lang.NPC_NOT_FOUND);
 					return;
 				}
 
@@ -229,13 +243,13 @@ public class CaptureCommand extends CommandBase implements CommandExecutor {
 
 				NPCModule.getInstance().getNPC(args[1]).save();
 
-				sender.sendMessage(ChatColor.GREEN + "Name set!");
+				sender.sendMessage(Lang.NAME_SET);
 				return;
 			}
 
 			if (args[0].equalsIgnoreCase("setloop") && args.length > 2) {
 				if(!NPCModule.getInstance().isNPC(args[1])) {
-					sender.sendMessage(ChatColor.RED + "NPC not found!");
+					sender.sendMessage(Lang.NPC_NOT_FOUND);
 					return;
 				}
 
@@ -248,26 +262,22 @@ public class CaptureCommand extends CommandBase implements CommandExecutor {
 
 			if (args[0].equalsIgnoreCase("import") && args.length > 1) {
 				if(NPCModule.getInstance().isNPC(args[1])) {
-					sender.sendMessage(ChatColor.RED + "NPC already exists with that name!");
+					sender.sendMessage(Lang.NPC_ALREADY_NAMED);
 					return;
 				}
 
 				if(!new File(PlayerCapture.getInstance().getDataFolder() + "\\Archive/" + args[1] + ".yml").exists()) {
-					sender.sendMessage(ChatColor.RED + "File was not found!");
+					sender.sendMessage(Lang.FILE_NOT_FOUND);
 					return;
 				}
 
-				try {
-					Files.move(
-							Paths.get(PlayerCapture.getInstance().getDataFolder() + "\\Archive/" + args[1] + ".yml"),
-							Paths.get(PlayerCapture.getInstance().getDataFolder() + "\\Recordings/" + args[1] + ".yml"));
 
-				} catch(IOException e) {
-					e.printStackTrace();
-				}
+				convert(args[1]);
+
+				new File(PlayerCapture.getInstance().getDataFolder() + "\\Archive/" + args[1] + ".yml").delete();
 
 				PlayerCapture.getInstance().loadNPC(args[1]);
-				sender.sendMessage(ChatColor.GREEN + "NPC config imported!");
+				sender.sendMessage(Lang.IMPORTED);
 				return;
 			}
 		}

@@ -21,7 +21,7 @@ public class SlotListener implements Listener {
 				PlayerCapture.getInstance().getCurrentlyRecording().get(player).cancel();
 				PlayerCapture.getInstance().getCurrentlyRecording().remove(player);
 
-				npc.setUp(false);
+				npc.setUp();
 				npc.save();
 				player.sendMessage(ChatColor.GREEN + "Recording stopped!");
 			}

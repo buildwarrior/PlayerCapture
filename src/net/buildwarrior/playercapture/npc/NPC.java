@@ -51,56 +51,46 @@ public class NPC {
 
 	@Getter @Setter private String displayName;
 	@Getter private World world;
-	@Getter @Setter	private OfflinePlayer skinID;
+	@Getter @Setter	private SkinCatch skinCatch;
 	@Getter @Setter private boolean loop;
 
 	@Setter @Getter private List<Frame> frames = new ArrayList<>();
 
 	@Getter private EntityPlayer entityPlayer;
 
-	private String value = null;
-	private String signature = null;
-
 	@Setter private Location start;
 
-	NPC(String name, Player recordingPlayer, OfflinePlayer skin) {
+	private byte b;
+
+	NPC(String name, Player recordingPlayer, SkinCatch skinCatch) {
 		this.name = name;
 		this.recordingPlayer = recordingPlayer;
 		this.world = recordingPlayer.getWorld();
-		this.skinID = skin;
+		this.skinCatch = skinCatch;
 
 		this.start = recordingPlayer.getLocation();
+		this.b = 0x01 | 0x02 | 0x04 | 0x08 | 0x10 | 0x20 | 0x40;
 	}
 
-	public NPC(String name, World world, OfflinePlayer skin, String value, String signature) {
+	public NPC(String name, World world, SkinCatch skinCatch, byte b) {
 		this.name = name;
 		this.recordingPlayer = null;
 		this.world = world;
-		this.skinID = skin;
-		this.value = value;
-		this.signature = signature;
+		this.skinCatch = skinCatch;
+		this.b = b;
 	}
 
 	public NPC clone(int frame) {
-		NPC npc = new NPC(name, world, skinID, value, signature);
+		NPC npc = new NPC(name, world, skinCatch, b);
 		npc.setDisplayName(this.displayName);
 		npc.setLoop(this.loop);
 		npc.setFrames(this.frames);
 		npc.setStart(frames.get(frame).getLocation());
-		npc.setUp(false);
+		npc.setUp();
 		return npc;
 	}
 
-	public void setUp(boolean update) {
-		if(update) {
-
-			String urlContents = URLContents.getUrlContents("https://sessionserver.mojang.com/session/minecraft/profile/" +
-					skinID.getUniqueId().toString().replaceAll("-", "") + "?unsigned=false");
-
-			this.value = urlContents.split("\"value\":\"")[1].split("\",")[0];
-			this.signature = urlContents.split("\"signature\":\"")[1].split("\"}]}")[0];
-		}
-
+	public void setUp() {
 		MinecraftServer server = ((CraftServer) Bukkit.getServer()).getServer();
 		WorldServer worldServer = ((CraftWorld) this.world).getHandle();
 
@@ -117,13 +107,19 @@ public class NPC {
 			}
 		}
 
-		profile.getProperties().put("textures", new Property("textures", value, signature));
+		profile.getProperties().put("textures", new Property("textures", skinCatch.getValue(), skinCatch.getSignature()));
 
 		this.entityPlayer = new EntityPlayer(server, worldServer, profile, new PlayerInteractManager(worldServer));
 
 		this.entityPlayer.setLocation(start.getX(), start.getY(), start.getZ(), 0, 0);
 
-		Byte b = 0x01 | 0x02 | 0x04 | 0x08 | 0x10 | 0x20 | 0x40;
+		//0x40 : Hat
+		//0x20 right leg
+		//0x10 left leg
+		//0x08 left arm
+		//0x04 right arm
+		//0x02 body
+		//0x01 cape
 		this.entityPlayer.getDataWatcher().set(DataWatcherRegistry.a.a(15), b);
 	}
 
@@ -133,10 +129,18 @@ public class NPC {
 
 		config.getData().set("DisplayName", this.displayName);
 		config.getData().set("World", this.world.getName());
-		config.getData().set("Skin", this.skinID.getName());
+		config.getData().set("Skin", this.skinCatch.getPlayer().getName());
 		config.getData().set("Loop", this.loop);
-		config.getData().set("Value", this.value);
-		config.getData().set("Signature", this.signature);
+		config.getData().set("Value", this.skinCatch.getValue());
+		config.getData().set("Signature", this.skinCatch.getSignature());
+
+		config.getData().set("ShowHat", true);
+		config.getData().set("ShowLeftArm", true);
+		config.getData().set("ShowRightArm", true);
+		config.getData().set("ShowLeftLeg", true);
+		config.getData().set("ShowRightLeg", true);
+		config.getData().set("ShowBody", true);
+		config.getData().set("ShowCape", true);
 
 		for(Frame frame : getFrames()) {
 			list.add(
@@ -147,7 +151,7 @@ public class NPC {
 					"/Yaw:" + frame.getLocation().getYaw() +
 					"/Sneak:" + frame.isSneaking() +
 					"/Sleep:" + frame.isSleeping() +
-					"/Fly:" + "false" +
+					"/Fly:" + frame.isFlying() +
 					"/Swim:" + frame.isSwimming() +
 					"/MainHand:" + frame.getMainHand().getType() + ":" + frame.getMainHand().getDurability() +
 					"/OffHand:" + frame.getOffHand().getType() + ":" + frame.getOffHand().getDurability() +

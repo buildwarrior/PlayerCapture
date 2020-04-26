@@ -1,6 +1,5 @@
 package net.buildwarrior.playercapture.npc;
 
-import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 
 import java.util.ArrayList;
@@ -13,7 +12,7 @@ public class NPCModule {
 
 	private HashMap<String, NPC> npcs = new HashMap<>();
 
-	public void addNPC(String name, Player player, OfflinePlayer skin) {
+	public void addNPC(String name, Player player, SkinCatch skin) {
 		this.npcs.put(name, new NPC(name, player, skin));
 	}
 
