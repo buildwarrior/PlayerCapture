@@ -2,24 +2,15 @@ package net.buildwarrior.playercapture.commands;
 
 import net.buildwarrior.playercapture.Config;
 import net.buildwarrior.playercapture.PlayerCapture;
-import net.buildwarrior.playercapture.npc.NPC;
 import net.buildwarrior.playercapture.npc.NPCModule;
 import net.buildwarrior.playercapture.npc.SkinCatch;
 import net.buildwarrior.playercapture.tasks.RecordTask;
-import net.buildwarrior.playercapture.utils.Frame;
-import net.buildwarrior.playercapture.utils.ItemBuilder;
-import net.minecraft.server.v1_14_R1.IChatBaseComponent;
-import net.minecraft.server.v1_14_R1.PacketPlayOutChat;
-import org.bukkit.Bukkit;
+import net.buildwarrior.playercapture.utils.ChatType;
+import net.buildwarrior.playercapture.versions.NPC;
 import org.bukkit.ChatColor;
-import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.OfflinePlayer;
 import org.bukkit.command.CommandSender;
-import org.bukkit.craftbukkit.v1_14_R1.entity.CraftPlayer;
 import org.bukkit.entity.Player;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -27,7 +18,7 @@ class CommandBase {
 
 	String helpMessage() {
 		return 	 ChatColor.GRAY + ChatColor.BOLD.toString() + "----------------[PlayerCapture]----------------"
-		+ "\n" + ChatColor.GREEN + "/pc record <name> <displayName> <skinID> <player> " + ChatColor.GRAY + "Start recording your movement, displayName, skinID and player are optional."
+		+ "\n" + ChatColor.GREEN + "/pc record <name> " + ChatColor.GRAY + "Start recording your movement."
 		+ "\n" + ChatColor.GREEN + "/pc play <name> " + ChatColor.GRAY + "Play npc recording."
 		+ "\n" + ChatColor.GREEN + "/pc stop <name> " + ChatColor.GRAY + "Stop npc recording."
 		+ "\n" + ChatColor.GREEN + "/pc list " + ChatColor.GRAY + "List all recordings."
@@ -59,7 +50,8 @@ class CommandBase {
 			player.sendMessage(ChatColor.GOLD + ChatColor.BOLD.toString() + "NPC's: " + ChatColor.WHITE + "(" + NPCModule.getInstance().getAll().size() + ")");
 
 			for(NPC npc : NPCModule.getInstance().getAll()) {
-				sendClickableMessage(player, ChatColor.GREEN + npc.getName() + ": ",
+
+				npc.sendClickableMessage(player, ChatColor.GREEN + npc.getName() + ": ",
 						ChatColor.WHITE + "[View information]", "pc info " + npc.getName());
 			}
 			player.sendMessage(ChatColor.GRAY + "----------------------------------------------------");
@@ -75,7 +67,7 @@ class CommandBase {
 		}
 	}
 
-	void record(String name, String displayName, SkinCatch skinCatch, Player player) {
+	void record(String name, String displayName, SkinCatch skinCatch, Player player, ChatType chat, boolean sneak) {
 		NPCModule.getInstance().addNPC(name, player, skinCatch);
 
 		NPCModule.getInstance().getNPC(name).setDisplayName(displayName);
@@ -85,16 +77,15 @@ class CommandBase {
 		RecordTask recordTask = new RecordTask(NPCModule.getInstance().getNPC(name));
 		recordTask.runTaskTimer(PlayerCapture.getInstance(), 0, 2);
 
+		recordTask.setChat(chat);
+		recordTask.setSneak(sneak);
+
+		NPCModule.getInstance().getNPC(name).setChatType(chat);
+
 		PlayerCapture.getInstance().getCurrentlyRecording().put(player, recordTask);
 
 		player.getInventory().setHeldItemSlot(1);
 		player.sendMessage(ChatColor.GREEN + "Recording! press 1 to stop recording!");
-	}
-
-	private void sendClickableMessage(Player player, String text, String clickableText, String runCommand) {
-		IChatBaseComponent chat = IChatBaseComponent.ChatSerializer.a("{\"text\":\"" + text + "\",\"extra\":" + "[{\"text\":\"" + clickableText + "\",\"clickEvent\":{\"action\":\"run_command\",\"value\":" + "\"/" + runCommand + "\"}}]}");
-		PacketPlayOutChat packet = new PacketPlayOutChat(chat);
-		((CraftPlayer)player).getHandle().playerConnection.sendPacket(packet);
 	}
 
 	void convert(String old) {
@@ -109,6 +100,12 @@ class CommandBase {
 		updatedFile.getData().set("Loop", oldFile.getData().getBoolean("Loop"));
 		updatedFile.getData().set("Value", oldFile.getData().getString("Value"));
 		updatedFile.getData().set("Signature", oldFile.getData().getString("Signature"));
+
+		if(oldFile.getData().contains("ChatType")) {
+			updatedFile.getData().set("ChatType", oldFile.getData().getString("ChatType"));
+		} else {
+			updatedFile.getData().set("ChatType", ChatType.NONE.name());
+		}
 
 		if(oldFile.getData().contains("ShowHat")) {
 			updatedFile.getData().set("ShowHat", oldFile.getData().getBoolean("ShowHat"));
@@ -150,19 +147,77 @@ class CommandBase {
 
 			String[] splitFrame = s.split("/");
 
-			String[] mainHand;
-			String[] offHand;
-			String[] helmet;
-			String[] chestplate;
-			String[] leggings;
-			String[] boots;
+			String[] mainHand = null;
+			String[] offHand = null;
+			String[] helmet = null;
+			String[] chestplate = null;
+			String[] leggings = null;
+			String[] boots = null;
 
-			boolean hit;
-			boolean fly;
-			boolean swim;
-			boolean sleep;
+			String chat = null;
 
-			if(splitFrame.length >= 15) {
+			boolean hit = false;
+			boolean glid = false;
+			boolean swim = false;
+			boolean sleep = false;
+			boolean sneak = false;
+
+			if(s.contains("[") || s.contains("{") || splitFrame.length == 5) {//convert 1.3
+
+				String[] values = null;
+				String rawValue = "";
+				String[] armor = null;
+				String rawArmor = "";
+
+				if(s.contains("[")) {
+					values = splitFrame[5].replace("[", "").replace("]", "").split(",");
+					rawValue = splitFrame[5].replace("[", "").replace("]", "");
+				}
+
+				if(s.contains("{") && values != null) {
+					armor = splitFrame[6].replace("{", "").replace("}", "").split(",");
+					rawArmor = splitFrame[6].replace("{", "").replace("}", "");
+
+				} else if(s.contains("{") && values == null) {
+					armor = splitFrame[5].replace("{", "").replace("}", "").split(",");
+					rawArmor = splitFrame[5].replace("{", "").replace("}", "");
+				}
+
+				if(values != null && rawValue.contains("Chat")) {
+					chat = values[0];
+				}
+
+				if(values != null && rawValue.contains("Sneak")) { sneak = true; }
+				if(values != null && rawValue.contains("Sleep")) { sleep = true; }
+				if(values != null && rawValue.contains("Gliding")) { glid = true; }
+				if(values != null && rawValue.contains("Swim")) { swim = true; }
+				if(values != null && rawValue.contains("Hit")) { hit = true; }
+
+				if(armor != null && rawArmor.contains("Helmet")) {
+					helmet = PlayerCapture.getInstance().getAmor(armor, "Helmet").split(":");
+				}
+
+				if(armor != null && rawArmor.contains("Chestplate")) {
+					chestplate = PlayerCapture.getInstance().getAmor(armor, "Chestplate").split(":");
+				}
+
+				if(armor != null && rawArmor.contains("Leggings")) {
+					leggings = PlayerCapture.getInstance().getAmor(armor, "Leggings").split(":");
+				}
+
+				if(armor != null && rawArmor.contains("Boots")) {
+					boots = PlayerCapture.getInstance().getAmor(armor, "Boots").split(":");
+				}
+
+				if(armor != null && rawArmor.contains("MainHand")) {
+					mainHand = PlayerCapture.getInstance().getAmor(armor, "MainHand").split(":");
+				}
+
+				if(armor != null && rawArmor.contains("OffHand")) {
+					offHand = PlayerCapture.getInstance().getAmor(armor, "OffHand").split(":");
+				}
+
+			} else if(splitFrame.length >= 15) {//convert 1.2
 				mainHand = splitFrame[9].split(":");
 				offHand = splitFrame[10].split(":");
 				helmet = splitFrame[11].split(":");
@@ -170,12 +225,14 @@ class CommandBase {
 				leggings = splitFrame[13].split(":");
 				boots = splitFrame[14].split(":");
 
+				sneak = Boolean.parseBoolean(splitFrame[5]);
+
 				hit = Boolean.parseBoolean(splitFrame[15].replace("Hit:", ""));
-				fly = Boolean.parseBoolean(splitFrame[7].replace("Fly:", ""));
+				glid = Boolean.parseBoolean(splitFrame[7].replace("Fly:", ""));
 				swim = Boolean.parseBoolean(splitFrame[8].replace("Swim:", ""));
 				sleep = Boolean.parseBoolean(splitFrame[6].replace("Sleep:", ""));
 
-			} else {
+			} else {//convert 1.1
 				mainHand = splitFrame[6].split(":");
 				offHand = splitFrame[7].split(":");
 				helmet = splitFrame[8].split(":");
@@ -183,29 +240,81 @@ class CommandBase {
 				leggings = splitFrame[10].split(":");
 				boots = splitFrame[11].split(":");
 
+				sneak = Boolean.parseBoolean(splitFrame[5]);
+
 				hit = Boolean.parseBoolean(splitFrame[12].replace("Hit:", ""));
-				fly = false;
-				swim = false;
-				sleep = false;
 			}
 
-			list.add(
-					splitFrame[0] + "/" +
+			String values = "";
+			String armor = "";
+
+			if(chat != null) {
+				values += "Chat(" + chat + "),";
+			}
+
+			if(sneak) {
+				values += "Sneak,";
+			}
+
+			if(sleep) {
+				values += "Sleep,";
+			}
+
+			if(glid) {
+				values += "Gliding,";
+			}
+
+			if(swim) {
+				values += "Swim,";
+			}
+
+			if(hit) {
+				values += "Hit,";
+			}
+
+			if(mainHand != null) {
+				armor += "MainHand:" + mainHand[1] + ":" + mainHand[2] + ",";
+			}
+
+			if(offHand != null) {
+				armor += "OffHand:" + offHand[1] + ":" + offHand[2] + ",";
+			}
+
+			if(helmet != null) {
+				armor += "Helmet:" + helmet[1] + ":" + helmet[2] + ",";
+			}
+
+			if(chestplate != null) {
+				armor += "Chestplate:" + chestplate[1] + ":" + chestplate[2] + ",";
+			}
+
+			if(leggings != null) {
+				armor += "Leggings:" + leggings[1] + ":" + leggings[2] + ",";
+			}
+
+			if(boots != null) {
+				armor += "Boots:" + boots[1] + ":" + boots[2] + ",";
+			}
+
+			String input = splitFrame[0] + "/" +
 					splitFrame[1] + "/" +
 					splitFrame[2] + "/" +
 					splitFrame[3] + "/" +
-					splitFrame[4] + "/" +
-					splitFrame[5] + "/" +
-					"Sleep:" + sleep +
-					"/Fly:" + fly +
-					"/Swim:" + swim +
-					"/MainHand:" + mainHand[1] + ":" + mainHand[2] +
-					"/OffHand:" + offHand[1] + ":" + offHand[2] +
-					"/Helmet:" + helmet[1] + ":" + helmet[2] +
-					"/Chestplate:" + chestplate[1] + ":" + chestplate[2] +
-					"/Leggings:" + leggings[1] + ":" + leggings[2] +
-					"/Boots:" + boots[1] + ":" + boots[2] +
-					"/Hit:" + hit);
+					splitFrame[4];
+
+			if(!values.equalsIgnoreCase("")) {
+				input += "/[" +
+						values +
+						"]";
+			}
+
+			if(!armor.equalsIgnoreCase("")) {
+				input += "/{" +
+						armor +
+						"}";
+			}
+
+			list.add(input);
 		}
 
 		updatedFile.getData().set("Frame", list);

@@ -1,7 +1,7 @@
 package net.buildwarrior.playercapture.listeners;
 
 import net.buildwarrior.playercapture.PlayerCapture;
-import net.buildwarrior.playercapture.npc.NPC;
+import net.buildwarrior.playercapture.versions.NPC;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;

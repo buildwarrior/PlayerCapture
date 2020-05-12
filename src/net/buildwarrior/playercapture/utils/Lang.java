@@ -1,4 +1,4 @@
-package net.buildwarrior.playercapture;
+package net.buildwarrior.playercapture.utils;
 
 import org.bukkit.ChatColor;
 

@@ -1,14 +1,17 @@
-package net.buildwarrior.playercapture.npc;
+package net.buildwarrior.playercapture.versions;
 
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.properties.Property;
 import lombok.Getter;
 import lombok.Setter;
-import net.buildwarrior.playercapture.PlayerCapture;
 import net.buildwarrior.playercapture.Config;
-import net.buildwarrior.playercapture.utils.Frame;
-import net.buildwarrior.playercapture.utils.URLContents;
+import net.buildwarrior.playercapture.PlayerCapture;
+import net.buildwarrior.playercapture.npc.SkinCatch;
 import net.buildwarrior.playercapture.utils.Actions;
+import net.buildwarrior.playercapture.utils.ChatType;
+import net.buildwarrior.playercapture.utils.Frame;
+import net.buildwarrior.playercapture.utils.NPCPose;
+import net.minecraft.server.v1_14_R1.BlockPosition;
 import net.minecraft.server.v1_14_R1.DataWatcherRegistry;
 import net.minecraft.server.v1_14_R1.EntityPlayer;
 import net.minecraft.server.v1_14_R1.EntityPose;
@@ -26,10 +29,12 @@ import net.minecraft.server.v1_14_R1.PacketPlayOutPlayerInfo;
 import net.minecraft.server.v1_14_R1.PlayerConnection;
 import net.minecraft.server.v1_14_R1.PlayerInteractManager;
 import net.minecraft.server.v1_14_R1.WorldServer;
+import net.minecraft.server.v1_14_R1.IChatBaseComponent;
+import net.minecraft.server.v1_14_R1.PacketPlayOutChat;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
-import org.bukkit.OfflinePlayer;
+import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.craftbukkit.v1_14_R1.CraftServer;
 import org.bukkit.craftbukkit.v1_14_R1.CraftWorld;
@@ -44,12 +49,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-public class NPC {
+public class NPC_1_14 implements NPC {
 
 	@Getter private final String name;
 	@Getter private final Player recordingPlayer;
 
-	@Getter @Setter private String displayName;
+	@Getter @Setter
+	private String displayName;
 	@Getter private World world;
 	@Getter @Setter	private SkinCatch skinCatch;
 	@Getter @Setter private boolean loop;
@@ -60,9 +66,11 @@ public class NPC {
 
 	@Setter private Location start;
 
+	@Setter private ChatType chatType;
+
 	private byte b;
 
-	NPC(String name, Player recordingPlayer, SkinCatch skinCatch) {
+	public NPC_1_14(String name, Player recordingPlayer, SkinCatch skinCatch) {
 		this.name = name;
 		this.recordingPlayer = recordingPlayer;
 		this.world = recordingPlayer.getWorld();
@@ -72,7 +80,7 @@ public class NPC {
 		this.b = 0x01 | 0x02 | 0x04 | 0x08 | 0x10 | 0x20 | 0x40;
 	}
 
-	public NPC(String name, World world, SkinCatch skinCatch, byte b) {
+	public NPC_1_14(String name, World world, SkinCatch skinCatch, byte b) {
 		this.name = name;
 		this.recordingPlayer = null;
 		this.world = world;
@@ -81,7 +89,7 @@ public class NPC {
 	}
 
 	public NPC clone(int frame) {
-		NPC npc = new NPC(name, world, skinCatch, b);
+		NPC npc = PlayerCapture.getInstance().getNPCClass(name, world, skinCatch, b);
 		npc.setDisplayName(this.displayName);
 		npc.setLoop(this.loop);
 		npc.setFrames(this.frames);
@@ -133,33 +141,87 @@ public class NPC {
 		config.getData().set("Loop", this.loop);
 		config.getData().set("Value", this.skinCatch.getValue());
 		config.getData().set("Signature", this.skinCatch.getSignature());
+		config.getData().set("ChatType", this.chatType.name());
 
-		config.getData().set("ShowHat", true);
-		config.getData().set("ShowLeftArm", true);
-		config.getData().set("ShowRightArm", true);
-		config.getData().set("ShowLeftLeg", true);
-		config.getData().set("ShowRightLeg", true);
-		config.getData().set("ShowBody", true);
-		config.getData().set("ShowCape", true);
+		config.getData().set("ShowHat", true);//TODO get value from config or npc (this overrides values)
+		config.getData().set("ShowLeftArm", true);//TODO get value from config or npc (this overrides values)
+		config.getData().set("ShowRightArm", true);//TODO get value from config or npc (this overrides values)
+		config.getData().set("ShowLeftLeg", true);//TODO get value from config or npc (this overrides values)
+		config.getData().set("ShowRightLeg", true);//TODO get value from config or npc (this overrides values)
+		config.getData().set("ShowBody", true);//TODO get value from config or npc (this overrides values)
+		config.getData().set("ShowCape", true);//TODO get value from config or npc (this overrides values)
 
 		for(Frame frame : getFrames()) {
-			list.add(
-					"X:" + frame.getLocation().getX() +
+			String values = "";
+			String armor = "";
+
+			if(frame.getChat() != null) {
+				values += "Chat(" + frame.getChat() + "),";
+			}
+
+			if(frame.isSneaking()) {
+				values += "Sneak,";
+			}
+
+			if(frame.isSleeping()) {
+				values += "Sleep,";
+			}
+
+			if(frame.isGliding()) {
+				values += "Gliding,";
+			}
+
+			if(frame.isSwimming()) {
+				values += "Swim,";
+			}
+
+			if(frame.isMainHandHit()) {
+				values += "Hit,";
+			}
+
+			if(frame.getMainHand().getType() != Material.AIR) {
+				armor += "MainHand:" + frame.getMainHand().getType() + ":" + frame.getMainHand().getDurability() + ",";
+			}
+
+			if(frame.getOffHand().getType() != Material.AIR) {
+				armor += "OffHand:" + frame.getOffHand().getType() + ":" + frame.getOffHand().getDurability() + ",";
+			}
+
+			if(frame.getHelmet().getType() != Material.AIR) {
+				armor += "Helmet:" + frame.getHelmet().getType() + ":" + frame.getHelmet().getDurability() + ",";
+			}
+
+			if(frame.getChestplate().getType() != Material.AIR) {
+				armor += "Chestplate:" + frame.getChestplate().getType() + ":" + frame.getChestplate().getDurability() + ",";
+			}
+
+			if(frame.getLeggings().getType() != Material.AIR) {
+				armor += "Leggings:" + frame.getLeggings().getType() + ":" + frame.getLeggings().getDurability() + ",";
+			}
+
+			if(frame.getBoots().getType() != Material.AIR) {
+				armor += "Boots:" + frame.getBoots().getType() + ":" + frame.getBoots().getDurability() + ",";
+			}
+
+			String input = "X:" + frame.getLocation().getX() +
 					"/Y:" + frame.getLocation().getY() +
 					"/Z:" + frame.getLocation().getZ() +
 					"/Pitch:" + frame.getLocation().getPitch() +
-					"/Yaw:" + frame.getLocation().getYaw() +
-					"/Sneak:" + frame.isSneaking() +
-					"/Sleep:" + frame.isSleeping() +
-					"/Fly:" + frame.isFlying() +
-					"/Swim:" + frame.isSwimming() +
-					"/MainHand:" + frame.getMainHand().getType() + ":" + frame.getMainHand().getDurability() +
-					"/OffHand:" + frame.getOffHand().getType() + ":" + frame.getOffHand().getDurability() +
-					"/Helmet:" + frame.getHelmet().getType() + ":" + frame.getHelmet().getDurability() +
-					"/Chestplate:" + frame.getChestplate().getType() + ":" + frame.getChestplate().getDurability() +
-					"/Leggings:" + frame.getLeggings().getType() + ":" + frame.getLeggings().getDurability() +
-					"/Boots:" + frame.getBoots().getType() + ":" + frame.getBoots().getDurability() +
-					"/Hit:" + frame.isMainHandHit());
+					"/Yaw:" + frame.getLocation().getYaw();
+
+			if(!values.equalsIgnoreCase("")) {
+				input += "/[" +
+						values +
+						"]";
+			}
+
+			if(!armor.equalsIgnoreCase("")) {
+				input += "/{" +
+						armor +
+						"}";
+			}
+
+			list.add(input);
 		}
 
 		config.getData().set("Frame", list);
@@ -201,8 +263,8 @@ public class NPC {
 		}
 	}
 
-	public void setEntityPos(EntityPose value) {
-		this.entityPlayer.getDataWatcher().set(DataWatcherRegistry.s.a(6), value);
+	public void setEntityPos(NPCPose value) {
+		this.entityPlayer.getDataWatcher().set(DataWatcherRegistry.s.a(6), EntityPose.valueOf(value.name()));
 
 		PacketPlayOutEntityMetadata packet = new PacketPlayOutEntityMetadata(entityPlayer.getId(), entityPlayer.getDataWatcher(), false);
 
@@ -219,9 +281,9 @@ public class NPC {
 
 			PlayerConnection playerConnection = ((CraftPlayer)pp).getHandle().playerConnection;
 			this.entityPlayer.setLocation(location.getX(), location.getY(), location.getZ(), location.getYaw(), location.getPitch());
-			playerConnection.sendPacket(new PacketPlayOutEntityTeleport(this.entityPlayer));
 			playerConnection.sendPacket(new PacketPlayOutEntityHeadRotation(this.entityPlayer, (byte)(location.getYaw() * 256.0f / 360.0f)));
 			playerConnection.sendPacket(packetPlayOutEntityLook);
+			playerConnection.sendPacket(new PacketPlayOutEntityTeleport(this.entityPlayer));
 		}
 	}
 
@@ -242,5 +304,15 @@ public class NPC {
 			playerConnection.sendPacket(new PacketPlayOutEntityEquipment(this.entityPlayer.getId(), EnumItemSlot.CHEST, CraftItemStack.asNMSCopy(chestplate)));
 			playerConnection.sendPacket(new PacketPlayOutEntityEquipment(this.entityPlayer.getId(), EnumItemSlot.HEAD, CraftItemStack.asNMSCopy(helmet)));
 		}
+	}
+
+	public void sendClickableMessage(Player player, String text, String clickableText, String runCommand) {
+		IChatBaseComponent chat = IChatBaseComponent.ChatSerializer.a("{\"text\":\"" + text + "\",\"extra\":" + "[{\"text\":\"" + clickableText + "\",\"clickEvent\":{\"action\":\"run_command\",\"value\":" + "\"/" + runCommand + "\"}}]}");
+		PacketPlayOutChat packet = new PacketPlayOutChat(chat);
+		((CraftPlayer)player).getHandle().playerConnection.sendPacket(packet);
+	}
+
+	public void setBed(int x, int y, int z) {
+		entityPlayer.e(new BlockPosition(x, y, z));
 	}
 }

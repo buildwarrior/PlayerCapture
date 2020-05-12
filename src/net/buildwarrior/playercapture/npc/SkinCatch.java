@@ -21,11 +21,11 @@ public class SkinCatch {
 		this.player = skinID;
 
 		String urlContents = URLContents.getUrlContents("https://sessionserver.mojang.com/session/minecraft/profile/" +
-				skinID.getUniqueId().toString().replaceAll("-", "") + "?unsigned=false");
+				skinID.getUniqueId().toString().replaceAll("-", "") + "?unsigned=false").replace(" ", "");
 
 		try {
-			this.value = urlContents.split("\"value\" : \"")[1].split("\",")[0];
-			this.signature = urlContents.split("\"signature\" : \"")[1].split("\"")[0];
+			this.value = urlContents.split("\"value\":\"")[1].split("\",")[0];
+			this.signature = urlContents.split("\"signature\":\"")[1].split("\"")[0];
 
 		} catch(ArrayIndexOutOfBoundsException e) {
 			System.out.println("COUNT NOT FIND PLAYER FOR SKIN");

@@ -3,17 +3,21 @@ package net.buildwarrior.playercapture;
 import lombok.Getter;
 import net.buildwarrior.playercapture.commands.CaptureCommand;
 import net.buildwarrior.playercapture.listeners.AnimationListener;
+import net.buildwarrior.playercapture.listeners.ChatListener;
 import net.buildwarrior.playercapture.listeners.PlayerJoinLister;
 import net.buildwarrior.playercapture.listeners.PlayerQuitListener;
 import net.buildwarrior.playercapture.listeners.SleepListener;
 import net.buildwarrior.playercapture.listeners.SlotListener;
-import net.buildwarrior.playercapture.npc.NPC;
 import net.buildwarrior.playercapture.npc.NPCModule;
 import net.buildwarrior.playercapture.npc.SkinCatch;
 import net.buildwarrior.playercapture.tasks.PlayTask;
 import net.buildwarrior.playercapture.tasks.RecordTask;
+import net.buildwarrior.playercapture.utils.ChatType;
 import net.buildwarrior.playercapture.utils.Frame;
 import net.buildwarrior.playercapture.utils.ItemBuilder;
+import net.buildwarrior.playercapture.versions.NPC_1_14;
+import net.buildwarrior.playercapture.versions.NPC;
+import net.buildwarrior.playercapture.versions.NPC_1_15;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -23,7 +27,6 @@ import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -37,7 +40,30 @@ public class PlayerCapture extends JavaPlugin {
 
 	@Getter private HashMap<OfflinePlayer, SkinCatch> skinCatchs = new HashMap<>();
 
-	
+	//TODO (Bugs)
+	//hitting glich
+	//1.15+ sleeping in beds wrong
+	//1.15.2 skin layer not working
+
+	//TODO (goals)
+	//chatting (over head)
+	//taking damage
+	//firing projectiles
+	//on fire
+	//opening chests
+
+	// /pc record <NPC-Name> {
+	// DisplayName[NAME TEXT HERE],
+	// SkinID[SKIN NAME HERE],
+	// Player[PLAYER TO RECORD ON HERE]
+	// ChatType[OVER-HEAD | CHAT | NONE],
+	// Sneak[TRUE | FALSE]
+	// }
+	// /pc record test2 {DisplayName[TEST],SkinID[hypixel],Player[Buildwarrior01],ChatType[CHAT],Sneak[False]}
+
+	//TODO (maybe)
+	//1.13 support
+	//1.12 support
 
 	public void onEnable() {
 		instance = this;
@@ -65,6 +91,7 @@ public class PlayerCapture extends JavaPlugin {
 		this.getServer().getPluginManager().registerEvents(new PlayerQuitListener(), this);
 		this.getServer().getPluginManager().registerEvents(new PlayerJoinLister(), this);
 		this.getServer().getPluginManager().registerEvents(new SleepListener(), this);
+		this.getServer().getPluginManager().registerEvents(new ChatListener(), this);
 
 		this.getCommand("playercapture").setExecutor(new CaptureCommand());
 
@@ -113,7 +140,7 @@ public class PlayerCapture extends JavaPlugin {
 
 		skinCatchs.put(skinCatch.getPlayer(), skinCatch);
 
-		NPC npc = new NPC(name, world, skinCatch, b);
+		NPC npc = getNPCClass(name, world, skinCatch, b);
 
 		npc.setLoop(config.getData().getBoolean("Loop"));
 		npc.setDisplayName(config.getData().getString("DisplayName"));
@@ -121,36 +148,103 @@ public class PlayerCapture extends JavaPlugin {
 		List<Frame> frames = new ArrayList<>();
 		for(String frame : config.getData().getStringList("Frame")) {
 
-			String[] splitFrame = frame.split("/");
-			String[] mainHand = splitFrame[9].split(":");
-			String[] offHand = splitFrame[10].split(":");
-			String[] helmet = splitFrame[11].split(":");
-			String[] chestplate = splitFrame[12].split(":");
-			String[] leggings = splitFrame[13].split(":");
-			String[] boots = splitFrame[14].split(":");
+			String[] splits = frame.split("/");
+
+			String[] values = null;
+			String rawValue = "";
+			String[] armor = null;
+			String rawArmor = "";
+
+			if(frame.contains("[")) {
+				values = splits[5].replace("[", "").replace("]", "").split(",");
+				rawValue = splits[5].replace("[", "").replace("]", "");
+			}
+
+			if(frame.contains("{") && values != null) {
+				armor = splits[6].replace("{", "").replace("}", "").split(",");
+				rawArmor = splits[6].replace("{", "").replace("}", "");
+
+			} else if(frame.contains("{") && values == null) {
+				armor = splits[5].replace("{", "").replace("}", "").split(",");
+				rawArmor = splits[5].replace("{", "").replace("}", "");
+			}
+
+			String chat = null;
+			if(values != null && rawValue.contains("Chat")) {
+				chat = values[0];
+			}
+
+			boolean sneak = false;
+			if(values != null && rawValue.contains("Sneak")) { sneak = true; }
+			boolean sleep = false;
+			if(values != null && rawValue.contains("Sleep")) { sleep = true; }
+			boolean gliding = false;
+			if(values != null && rawValue.contains("Gliding")) { gliding = true; }
+			boolean swimming = false;
+			if(values != null && rawValue.contains("Swim")) { swimming = true; }
+			boolean hit = false;
+			if(values != null && rawValue.contains("Hit")) { hit = true; }
+
+			ItemBuilder helmet = new ItemBuilder().type(Material.AIR);
+			if(armor != null && rawArmor.contains("Helmet")) {
+				String[] h = getAmor(armor, "Helmet").split(":");
+				helmet.type(Material.valueOf(h[1])).damage(Integer.parseInt(h[2]));
+			}
+
+			ItemBuilder chestplate = new ItemBuilder().type(Material.AIR);
+			if(armor != null && rawArmor.contains("Chestplate")) {
+				String[] h = getAmor(armor, "Chestplate").split(":");
+				chestplate.type(Material.valueOf(h[1])).damage(Integer.parseInt(h[2]));
+			}
+
+			ItemBuilder leggings = new ItemBuilder().type(Material.AIR);
+			if(armor != null && rawArmor.contains("Leggings")) {
+				String[] h = getAmor(armor, "Leggings").split(":");
+				leggings.type(Material.valueOf(h[1])).damage(Integer.parseInt(h[2]));
+			}
+
+			ItemBuilder boots = new ItemBuilder().type(Material.AIR);
+			if(armor != null && rawArmor.contains("Boots")) {
+				String[] h = getAmor(armor, "Boots").split(":");
+				boots.type(Material.valueOf(h[1])).damage(Integer.parseInt(h[2]));
+			}
+
+			ItemBuilder mainHand = new ItemBuilder().type(Material.AIR);
+			if(armor != null && rawArmor.contains("MainHand")) {
+				String[] h = getAmor(armor, "MainHand").split(":");
+				mainHand.type(Material.valueOf(h[1])).damage(Integer.parseInt(h[2]));
+			}
+
+			ItemBuilder offHand = new ItemBuilder().type(Material.AIR);
+			if(armor != null && rawArmor.contains("OffHand")) {
+				String[] h = getAmor(armor, "OffHand").split(":");
+				offHand.type(Material.valueOf(h[1])).damage(Integer.parseInt(h[2]));
+			}
 
 			frames.add(new Frame(new Location(world,
-					Double.parseDouble(splitFrame[0].replace("X:", "")),
-					Double.parseDouble(splitFrame[1].replace("Y:", "")),
-					Double.parseDouble(splitFrame[2].replace("Z:", "")),
-					Float.parseFloat(splitFrame[4].replace("Yaw:", "")),
-					Float.parseFloat(splitFrame[3].replace("Pitch:", ""))),
+					Double.parseDouble(splits[0].replace("X:", "")),
+					Double.parseDouble(splits[1].replace("Y:", "")),
+					Double.parseDouble(splits[2].replace("Z:", "")),
+					Float.parseFloat(splits[4].replace("Yaw:", "")),
+					Float.parseFloat(splits[3].replace("Pitch:", ""))),
+					sneak,
+					sleep,
+					gliding,
+					swimming,
+					hit,
 
-					Boolean.parseBoolean(splitFrame[5].replace("Sneak:", "")),
-					Boolean.parseBoolean(splitFrame[6].replace("Sleep:", "")),
-					Boolean.parseBoolean(splitFrame[7].replace("Fly:", "")),
-					Boolean.parseBoolean(splitFrame[8].replace("Swim:", "")),
-					Boolean.parseBoolean(splitFrame[15].replace("Hit:", "")),
-
-					new ItemBuilder().type(Material.valueOf(helmet[1])).damage(Integer.parseInt(helmet[2])).build(),
-					new ItemBuilder().type(Material.valueOf(chestplate[1])).damage(Integer.parseInt(chestplate[2])).build(),
-					new ItemBuilder().type(Material.valueOf(leggings[1])).damage(Integer.parseInt(leggings[2])).build(),
-					new ItemBuilder().type(Material.valueOf(boots[1])).damage(Integer.parseInt(boots[2])).build(),
-					new ItemBuilder().type(Material.valueOf(mainHand[1])).damage(Integer.parseInt(mainHand[2])).build(),
-					new ItemBuilder().type(Material.valueOf(offHand[1])).damage(Integer.parseInt(offHand[2])).build()));
+					helmet.build(),
+					chestplate.build(),
+					leggings.build(),
+					boots.build(),
+					mainHand.build(),
+					offHand.build(),
+					chat
+			));
 		}
 		npc.setFrames(frames);
 		npc.setStart(frames.get(0).getLocation());
+		npc.setChatType(ChatType.valueOf(config.getData().getString("ChatType").toUpperCase()));
 
 		npc.setUp();
 
@@ -177,5 +271,53 @@ public class PlayerCapture extends JavaPlugin {
 		}
 
 		return skinCatch;
+	}
+
+	public String getAmor(String[] armor, String value) {
+
+		for(String i : armor) {
+
+			if(i.contains(value)) {
+				return i;
+			}
+		}
+
+		return null;
+	}
+
+	public NPC getNPCClass(String name, Player player, SkinCatch skin) {
+		switch(getServer().getBukkitVersion()) {
+			case "1.14.4-R0.1-SNAPSHOT":
+			case "1.14.3-R0.1-SNAPSHOT":
+			case "1.14.2-R0.1-SNAPSHOT":
+			case "1.14.1-R0.1-SNAPSHOT":
+			case "1.14-R0.1-SNAPSHOT":
+				return new NPC_1_14(name, player, skin);
+			case "1.15.2-R0.1-SNAPSHOT":
+			case "1.15.1-R0.1-SNAPSHOT":
+			case "1.15-R0.1-SNAPSHOT":
+				return new NPC_1_15(name, player, skin);
+		}
+
+		System.out.println("\033[0;33m[PlayerCapture] \033[0;31mCould not load version: " + getServer().getBukkitVersion() + "\033[0m");
+		return null;
+	}
+
+	public NPC getNPCClass(String name, World world, SkinCatch skin, byte b) {
+		switch(getServer().getBukkitVersion()) {
+			case "1.14.4-R0.1-SNAPSHOT":
+			case "1.14.3-R0.1-SNAPSHOT":
+			case "1.14.2-R0.1-SNAPSHOT":
+			case "1.14.1-R0.1-SNAPSHOT":
+			case "1.14-R0.1-SNAPSHOT":
+				return new NPC_1_14(name, world, skin, b);
+			case "1.15.2-R0.1-SNAPSHOT":
+			case "1.15.1-R0.1-SNAPSHOT":
+			case "1.15-R0.1-SNAPSHOT":
+				return new NPC_1_15(name, world, skin, b);
+		}
+
+		System.out.println("\033[0;33m[PlayerCapture] \033[0;31mCould not load version: " + getServer().getBukkitVersion() + "\033[0m");
+		return null;
 	}
 }

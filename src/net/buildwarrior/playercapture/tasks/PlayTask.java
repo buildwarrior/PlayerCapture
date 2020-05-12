@@ -2,16 +2,12 @@ package net.buildwarrior.playercapture.tasks;
 
 import lombok.Getter;
 import net.buildwarrior.playercapture.PlayerCapture;
-import net.buildwarrior.playercapture.npc.NPC;
 import net.buildwarrior.playercapture.utils.Actions;
-import net.minecraft.server.v1_14_R1.BlockPosition;
-import net.minecraft.server.v1_14_R1.EntityPose;
+import net.buildwarrior.playercapture.utils.NPCPose;
+import net.buildwarrior.playercapture.versions.NPC;
+import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.block.Block;
-import org.bukkit.block.BlockFace;
-import org.bukkit.block.BlockState;
-import org.bukkit.block.data.type.Bed;
 import org.bukkit.scheduler.BukkitRunnable;
 
 public class PlayTask extends BukkitRunnable {
@@ -54,27 +50,25 @@ public class PlayTask extends BukkitRunnable {
 		Location tp = npc.getFrames().get(frame).getLocation();
 
 		if(npc.getFrames().get(frame).isSneaking()) {
-			clone.setEntityPos(EntityPose.SNEAKING);
+			clone.setEntityPos(NPCPose.SNEAKING);
 
 		} else if(npc.getFrames().get(frame).isSwimming()) {
-			clone.setEntityPos(EntityPose.SWIMMING);
+			clone.setEntityPos(NPCPose.SWIMMING);
 
-		} else if(npc.getFrames().get(frame).isFlying()) {
-			clone.setEntityPos(EntityPose.FALL_FLYING);
+		} else if(npc.getFrames().get(frame).isGliding()) {
+			clone.setEntityPos(NPCPose.FALL_FLYING);
 
 		} else if(npc.getFrames().get(frame).isSleeping()) {
-			clone.setEntityPos(EntityPose.SLEEPING);
+			clone.setEntityPos(NPCPose.SLEEPING);
 
-			clone.getEntityPlayer().e(new BlockPosition(
-					npc.getFrames().get(frame).getLocation().getBlockX(),
+			clone.setBed(npc.getFrames().get(frame).getLocation().getBlockX(),
 					npc.getFrames().get(frame).getLocation().getBlockY(),
-					npc.getFrames().get(frame).getLocation().getBlockZ()
-			));
+					npc.getFrames().get(frame).getLocation().getBlockZ());
 
 			tp = new Location(tp.getWorld(), tp.getX() + 0.5f, tp.getY() + 0.6f, tp.getZ() + 0.5f, tp.getYaw(), tp.getPitch());
 
 		} else {
-			clone.setEntityPos(EntityPose.STANDING);
+			clone.setEntityPos(NPCPose.STANDING);
 		}
 
 		clone.teleport(tp);
@@ -89,6 +83,13 @@ public class PlayTask extends BukkitRunnable {
 				npc.getFrames().get(frame).getBoots(),
 				npc.getFrames().get(frame).getMainHand(),
 				npc.getFrames().get(frame).getOffHand());
+
+		if(npc.getFrames().get(frame).getChat() != null) {
+			//TODO over head chat
+			String message = npc.getFrames().get(frame).getChat().split("\\(")[1];
+
+			Bukkit.broadcastMessage(ChatColor.translateAlternateColorCodes('&', message.substring(0, message.length() -1)));
+		}
 
 		frame++;
 

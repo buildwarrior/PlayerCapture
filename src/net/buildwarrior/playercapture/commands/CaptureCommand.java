@@ -1,15 +1,17 @@
 package net.buildwarrior.playercapture.commands;
 
-import net.buildwarrior.playercapture.Lang;
+import net.buildwarrior.playercapture.utils.ChatType;
+import net.buildwarrior.playercapture.utils.Lang;
 import net.buildwarrior.playercapture.PlayerCapture;
-import net.buildwarrior.playercapture.npc.NPC;
 import net.buildwarrior.playercapture.npc.NPCModule;
 import net.buildwarrior.playercapture.npc.SkinCatch;
 import net.buildwarrior.playercapture.tasks.PlayTask;
 import net.buildwarrior.playercapture.tasks.RecordTask;
 import net.buildwarrior.playercapture.utils.PermissionLang;
+import net.buildwarrior.playercapture.versions.NPC;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -77,15 +79,63 @@ public class CaptureCommand extends CommandBase implements CommandExecutor {
 					return;
 				}
 
-				if(args.length == 5) {
-					Player target = Bukkit.getPlayer(args[4]);
+				//{DisplayName[
+				// BOB
+				// ],SkinID[BOB],Player[BOB],ChatType[CHAT],Sneak[TRUE]}
 
-					if(target == null) {
-						sender.sendMessage(Lang.UNKNOWN_PLAYER);
-						return;
+				if(args.length == 3) {
+					Player target = null;
+					String displayName = null;
+					SkinCatch skin = null;
+					boolean sneak = true;
+					ChatType chatType = ChatType.NONE;
+
+					if(args[2].contains("Player")) {
+						target = Bukkit.getPlayer(args[2].split("Player\\[")[1].split("]")[0]);
+
+						if(target == null) {
+							sender.sendMessage(Lang.PLAYER_NOT_FOUND);
+							return;
+						}
 					}
 
-					record(args[1], args[2], PlayerCapture.getInstance().createSkin(Bukkit.getOfflinePlayer(args[3])), target);
+					if(args[2].contains("ChatType")) {
+						chatType = ChatType.valueOf(args[2].split("ChatType\\[")[1].split("]")[0].toUpperCase());
+					}
+
+					if(args[2].contains("Sneak")) {
+						sneak = Boolean.parseBoolean(args[2].split("Sneak\\[")[1].split("]")[1]);
+					}
+
+					if(args[2].contains("DisplayName")) {
+						displayName = args[2].split("DisplayName\\[")[1].split("]")[0];
+					}
+
+					if(args[2].contains("SkinID")) {
+						OfflinePlayer skinPlayer = Bukkit.getOfflinePlayer(args[2].split("SkinID\\[")[1].split("]")[0]);
+
+						skin = new SkinCatch(skinPlayer);
+					}
+
+					if(target == null) {
+
+						if(player == null) {
+							sender.sendMessage(Lang.PLAYERS_ONLY);
+							return;
+						}
+
+						target = player;
+					}
+
+					if(displayName == null) {
+						displayName = target.getDisplayName();
+					}
+
+					if(skin == null) {
+						skin = PlayerCapture.getInstance().createSkin(player);
+					}
+
+					record(args[1], displayName, skin, target, chatType, sneak);
 					return;
 				}
 
@@ -94,21 +144,8 @@ public class CaptureCommand extends CommandBase implements CommandExecutor {
 					return;
 				}
 
-				if(PlayerCapture.getInstance().getCurrentlyRecording().containsKey(player)) {
-					player.sendMessage(Lang.ALREADY_RECORDING);
-					return;
-				}
-
 				if(args.length == 2) {
-					record(args[1], player.getDisplayName(), PlayerCapture.getInstance().createSkin(player), player);
-					return;
-				}
-				if(args.length == 3) {
-					record(args[1], args[2], PlayerCapture.getInstance().createSkin(player), player);
-					return;
-				}
-				if(args.length == 4) {
-					record(args[1], args[2], PlayerCapture.getInstance().createSkin(Bukkit.getOfflinePlayer(args[3])), player);
+					record(args[1], player.getDisplayName(), PlayerCapture.getInstance().createSkin(player), player, ChatType.NONE, true);
 					return;
 				}
 				return;
